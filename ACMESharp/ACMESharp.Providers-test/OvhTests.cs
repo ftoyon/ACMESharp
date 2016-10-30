@@ -1,27 +1,47 @@
 ﻿using ACMESharp.ACME;
 using ACMESharp.Providers.OVH;
+using ACMESharp.Util;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ACMESharp.Providers
 {
-   public class OvhTests
+    [TestClass]
+    public class OvhTests
     {
-        private Dictionary<string, object> GetParams()
-        {
-            return new Dictionary<string, object>()
+        public static readonly IReadOnlyDictionary<string, object> EMPTY_PARAMS =
+            new Dictionary<string, object>()
             {
-                {"Endpoint", "" },
-                {"ApplicationKey", "" },
-                {"ApplicationSecret", "" },
-                {"ConsumerKey", "" }
+                ["DomainName"] = "",
+                ["Endpoint"] = "",
+                ["ApplicationKey"] = "",
+                ["ApplicationSecret"] = "",
+                ["ConsumerKey"] = "",
             };
+
+        private static IReadOnlyDictionary<string, object> _handlerParams = EMPTY_PARAMS;
+
+        private static IReadOnlyDictionary<string, object> GetParams()
+        {
+            return _handlerParams;
         }
-        
+
+        [ClassInitialize]
+        public static void Init(TestContext tctx)
+        {
+            var file = new FileInfo("Config\\OvhHandlerParams.json");
+            if (file.Exists)
+            {
+                using (var fs = new FileStream(file.FullName, FileMode.Open))
+                {
+                    _handlerParams = JsonHelper.Load<Dictionary<string, object>>(fs);
+                }
+            }
+        }
+
         public static OvhChallengeHandlerProvider GetProvider()
         {
             return new OvhChallengeHandlerProvider();
@@ -32,6 +52,17 @@ namespace ACMESharp.Providers
             return (OvhChallengeHandlerProvider) GetProvider().GetHandler(challenge, null);
         }
 
+        public static OvhHelper GetHelper()
+        {
+            var p = GetParams();
+            var h = new OvhHelper(
+                    (string) p["Endpoint"],
+                    (string) p["ApplicationKey"],
+                    (string) p["ApplicationSecret"],
+                    (string) p["ConsumerKey"]
+                );
+            return h;
+        }
 
         [TestMethod]
         public void TestParameterDescriptions()
@@ -88,5 +119,33 @@ namespace ACMESharp.Providers
             h.Handle(null);
         }
 
+        [TestMethod]
+        public void TestAddDnsRecord()
+        {
+            var h = GetHelper();
+            var rrName = "acmesharp-test." + GetParams()["DomainName"];
+            var rrValue = "testrr-" + DateTime.Now.ToString("yyyyMMddHHmmss #1");
+
+            h.AddOrUpdateDnsRecord(rrName, rrValue);
+        }
+
+        [TestMethod]
+        public void TestUpdateDnsRecord()
+        {
+            var h = GetHelper();
+            var rrName = "acmesharp-test." + GetParams()["DomainName"];
+            var rrValue = "testrr-" + DateTime.Now.ToString("yyyyMMddHHmmss #2");
+
+            h.AddOrUpdateDnsRecord(rrName, rrValue);
+        }
+
+        [TestMethod]
+        public void TestDeleteDnsRecord()
+        {
+            var h = GetHelper();
+            var rrName = "acmesharp-test." + GetParams()["DomainName"];
+
+            h.DeleteDnsRecord(rrName);
+        }
     }
 }

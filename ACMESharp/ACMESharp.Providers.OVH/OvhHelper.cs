@@ -5,7 +5,14 @@ using System.Threading;
 
 namespace ACMESharp.Providers.OVH
 {
-    internal class OvhHelper
+    /// <summary>
+    /// Helper class to interface with the OVH API endpoint.
+    /// </summary>
+    /// <remarks>
+    /// See <see cref="https://api.ovh.com/"/>
+    /// for more details.
+    /// </remarks>
+    public class OvhHelper
     {
         private readonly Client _client;
 
@@ -25,7 +32,7 @@ namespace ACMESharp.Providers.OVH
             _subDomain = string.Join(".", parts.Take(parts.Length - 2));
         }
 
-        internal void AddOrUpdateDnsRecord(string recordName, string value)
+        public void AddOrUpdateDnsRecord(string recordName, string value)
         {
             SetZoneAndSubDomain(recordName);
 
@@ -44,7 +51,7 @@ namespace ACMESharp.Providers.OVH
             Thread.Sleep(10000);
         }
 
-        internal void DeleteDnsRecord(string recordName)
+        public void DeleteDnsRecord(string recordName)
         {
             SetZoneAndSubDomain(recordName);
 
