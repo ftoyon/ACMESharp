@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ACMESharp.Util;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
@@ -20,6 +21,16 @@ namespace ACMESharp.Ext
 
         public static string RelativeSearchPathOverride
         { get; set; }
+
+        /// <summary>
+        /// When true, includes the immediate children of the extension folder
+        /// as extension locations to be included in the aggregate catalog.
+        /// </summary>
+        public static bool IncludeExtPathFolders
+        { get; set; } = true;
+
+        public static bool IncludeExtPathLinks
+        { get; set; } = true;
 
         public static string GetExtPath()
         {
@@ -48,7 +59,36 @@ namespace ACMESharp.Ext
             // Add the local extension folder if it exists
             var thisExt = ExtCommon.GetExtPath();
             if (Directory.Exists(thisExt))
+            {
                 aggCat.Catalogs.Add(new DirectoryCatalog(thisExt));
+
+                if (IncludeExtPathFolders)
+                {
+                    // Add each immediate child directory as well
+                    foreach (var d in Directory.GetDirectories(thisExt))
+                    {
+                        aggCat.Catalogs.Add(new DirectoryCatalog(d));
+                    }
+                }
+
+                if (IncludeExtPathLinks)
+                {
+                    // Add each folder that's defined in ExtPathLink definition file
+                    foreach (var f in Directory.GetFiles(thisExt, "*.extlnk"))
+                    {
+                        try
+                        {
+                            var epl = JsonHelper.Load<ExtPathLink>(File.ReadAllText(f));
+                            aggCat.Catalogs.Add(new DirectoryCatalog(epl.Path));
+                        }
+                        catch (Exception ex)
+                        {
+                            throw new Exception("failed to resolve extension link", ex)
+                                    .With(nameof(ExtPathLink), f);
+                        }
+                    }
+                }
+            }
 
             // Other possible folders to include:
             //    * Application CWD
@@ -116,6 +156,12 @@ namespace ACMESharp.Ext
 
             public string RelativeSearchPath
             { get; }
+        }
+
+        public class ExtPathLink
+        {
+            public string Path
+            { get; set; }
         }
     }
 }
